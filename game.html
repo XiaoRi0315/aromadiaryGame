@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>精神充電：調配今日元氣香氛 | 嗅覺日記 AromaDiary</title>
+  <style>
+    /* ===================================================
+       1. 基礎色彩與響應式重置 (溫暖木質調 + 柔和科技粉)
+    =================================================== */
+    :root {
+      --bg-cream: #FDF9F3;          /* 溫潤奶茶米色 */
+      --wood-primary: #8D5B4C;      /* 主木質棕 */
+      --wood-dark: #4A3026;         /* 瓶身暗面與文字 */
+      --wood-light: #D9A066;        /* 淺木紋色 */
+      --soft-pink: #E8A598;         /* 柔和科技粉 */
+      --soft-pink-bg: rgba(232, 165, 152, 0.15);
+      --amber-gold: #E6A15C;       /* 肖楠金琥珀 */
+      --cypress-green: #5B8A72;     /* 龍柏森林綠 */
+      --agarwood-brown: #8B5A2B;    /* 沉香深木色 */
+      --bad-dark: #2A2438;          /* 壓力雜訊暗紫黑 */
+      --bad-crimson: #8B0000;       /* 壓力警示暗紅 */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #EAD8C3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      touch-action: none; /* 嚴格禁止 iOS / Android 下拉重整與滾動回彈 */
+    }
+
+    /* 直式專屬遊戲容器 (自適應滿版，最大寬度 440px) */
+    #game-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      background: radial-gradient(circle at 50% 25%, #FFFFFF 0%, var(--bg-cream) 100%);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 0 25px rgba(74, 48, 38, 0.12);
+    }
+
+    /* ===================================================
+       2. 頂部儀表板 UI (倒數計時、得分、電量進度條)
+    =================================================== */
+    header {
+      padding: 14px 18px 8px;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .brand-title {
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      color: var(--wood-primary);
+      text-align: center;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--wood-dark);
+    }
+
+    .status-pill {
+      background: var(--soft-pink-bg);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(232, 165, 152, 0.4);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .progress-track {
+      width: 100%;
+      background: rgba(141, 91, 76, 0.12);
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      padding: 2px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--soft-pink), var(--wood-primary));
+      border-radius: 4px;
+      transition: width 0.2s ease-out;
+    }
+
+    /* 主遊戲畫布 */
+    canvas {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* ===================================================
+       3. 彈窗與遮罩系統 (Modal)
+    =================================================== */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(42, 36, 56, 0.55);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 20;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .modal-card {
+      background: #FFFFFF;
+      border-radius: 22px;
+      width: 100%;
+      max-width: 350px;
+      padding: 26px 22px;
+      text-align: center;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(217, 160, 102, 0.25);
+      animation: modalPop 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes modalPop {
+      0% { transform: scale(0.92); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-title {
+      font-size: 1.22rem;
+      color: var(--wood-dark);
+      font-weight: 800;
+      margin-bottom: 12px;
+      letter-spacing: 0.04em;
+    }
+
+    /* 規則說明條列與視覺對比欄 */
+    .rules-box {
+      background: var(--bg-cream);
+      border-radius: 14px;
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 0.84rem;
+      color: #55443B;
+      line-height: 1.5;
+      margin-bottom: 16px;
+      border: 1px solid rgba(141, 91, 76, 0.1);
+    }
+
+    .rules-box p {
+      margin-bottom: 4px;
+    }
+
+    /* 外觀辨識對比示範區 */
+    .visual-guide {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 10px 0;
+      padding: 10px 8px;
+      background: #FFFFFF;
+      border-radius: 10px;
+      border: 1px dashed rgba(141, 91, 76, 0.2);
+    }
+
+    .guide-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    .guide-badge-good {
+      color: #2F6F4E;
+    }
+    .guide-badge-bad {
+      color: #8B0000;
+    }
+
+    .guide-icon-preview {
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .preview-good {
+      background: radial-gradient(circle at 35% 35%, #FFF5EB, var(--amber-gold));
+      box-shadow: 0 0 10px rgba(230, 161, 92, 0.7);
+      color: #FFFFFF;
+      font-size: 1.1rem;
+    }
+
+    .preview-bad {
+      background: #2A2438;
+      border: 2px solid var(--bad-crimson);
+      clip-path: polygon(50% 0%, 80% 20%, 100% 60%, 75% 100%, 25% 100%, 0% 60%, 20% 20%);
+      color: #FF5252;
+      font-size: 1.1rem;
+    }
+
+    /* 主要按鈕 */
+    .btn-action {
+      display: block;
+      width: 100%;
+      background: linear-gradient(135deg, var(--wood-primary) 0%, var(--wood-dark) 100%);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 24px;
+      padding: 13px 0;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      box-shadow: 0 6px 14px rgba(74, 48, 38, 0.25);
+      cursor: pointer;
+      outline: none;
+      transition: transform 0.1s ease, opacity 0.15s ease;
+    }
+
+    .btn-action:active {
+      transform: scale(0.97);
+      opacity: 0.92;
+    }
+
+    /* 結算分數展示 */
+    .result-score {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--wood-primary);
+      margin: 10px 0 6px;
+    }
+
+    .result-desc {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: #6C584C;
+      margin-bottom: 20px;
+      padding: 0 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-wrapper">
+    <!-- 頂部資訊板 -->
+    <header>
+      <div class="brand-title">AromaDiary 嗅覺日記</div>
+      <div class="status-bar">
+        <div class="status-pill">⏳ 倒數 <span id="ui-timer">30</span>s</div>
+        <div class="status-pill">🔋 得分 <span id="ui-score">0</span></div>
+      </div>
+      <div class="progress-track">
+        <div id="ui-progress" class="progress-fill"></div>
+      </div>
+    </header>
+
+    <!-- 遊戲畫布 -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 遊戲前：規則說明 Modal -->
+    <div id="start-modal" class="modal-overlay">
+      <div class="modal-card">
+        <h2 class="modal-title">精神充電：調配今日元氣香氛</h2>
+        
+        <div class="rules-box">
+          <p>• 倒數 30 秒，左右滑動底部香氛瓶接取水滴。</p>
+          <p>• 時間結束前達 <b>100 分</b> 即可注滿元氣！</p>
+          
+          <!-- 視覺辨識示範對比 -->
+          <div class="visual-guide">
+            <div class="guide-item guide-badge-good">
+              <div class="guide-icon-preview preview-good">💧</div>
+              <span>圓潤發光香滴 (+10)</span>
+            </div>
+            <div class="guide-item guide-badge-bad">
+              <div class="guide-icon-preview preview-bad">⚡</div>
+              <span>尖銳多角雜質 (-5)</span>
+            </div>
+          </div>
+          
+          <p style="font-size: 0.78rem; color: #8C6239; margin-top: 4px;">
+            ※ 辨識提醒：避開暗黑帶刺雜訊，專注收集溫暖發光的精油微滴！
+          </p>
+        </div>
+
+        <button id="btn-start" class="btn-action">開始充電</button>
+      </div>
+    </div>
+
+    <!-- 遊戲後：結算 Modal (嚴格禁止任何導流/優惠券/分享按鈕) -->
+    <div id="result-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h2 id="res-title" class="modal-title">充電完成</h2>
+        <div id="res-score" class="result-score">100%</div>
+        <p id="res-desc" class="result-desc"></p>
+        <button id="btn-restart" class="btn-action">再玩一次</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ===================================================
+       4. 遊戲核心邏輯 (Vanilla JavaScript)
+    =================================================== */
+    (function () {
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      // UI 節點
+      const uiTimer = document.getElementById("ui-timer");
+      const uiScore = document.getElementById("ui-score");
+      const uiProgress = document.getElementById("ui-progress");
+      const startModal = document.getElementById("start-modal");
+      const resultModal = document.getElementById("result-modal");
+      const btnStart = document.getElementById("btn-start");
+      const btnRestart = document.getElementById("btn-restart");
+      const resTitle = document.getElementById("res-title");
+      const resScore = document.getElementById("res-score");
+      const resDesc = document.getElementById("res-desc");
+
+      // 遊戲執行狀態
+      let isPlaying = false;
+      let score = 0;
+      let timeLeft = 30;
+      let timerTimer = null;
+      let animationId = null;
+      let lastSpawnTime = 0;
+      let dpr = 1;
+
+      // 物件池
+      let drops = [];
+      let floatingTexts = [];
+
+      // 彰化天然木香正面滴設定 (圓潤、發光、晶瑩)
+      const GOOD_DROPS = [
+        { name: "肖楠", glowColor: "rgba(230, 161, 92, 0.75)", fillBase: "#E6A15C", icon: "💧" },
+        { name: "龍柏", glowColor: "rgba(91, 138, 114, 0.75)", fillBase: "#5B8A72", icon: "🌿" },
+        { name: "沉香", glowColor: "rgba(139, 90, 43, 0.75)", fillBase: "#8B5A2B", icon: "✨" }
+      ];
+
+      // 接收器 (圓柱木質香氛瓶)
+      const bottle = {
+        x: 0,
+        y: 0,
+        width: 74,
+        height: 50,
+        targetX: 0
+      };
+
+      // 舒壓寄語資料庫
+      const RELAX_QUOTES = [
+        "肖楠與紅檜的深邃木香已在心底築起寧靜，帶著滿格元氣迎接挑戰！",
+        "沉香的安神定性化解了微電焦慮，你的身心已重返最佳和諧狀態。",
+        "龍柏的蒼翠活力已喚醒感官，放慢呼吸，感受自然賦予你的充沛能量。"
+      ];
+
+      /* ===================================================
+         畫布自適應 (支援 Retina 螢幕防模糊)
+      =================================================== */
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+
+        // 初始化香氛瓶位置
+        bottle.y = rect.height - bottle.height - 24;
+        if (!isPlaying) {
+          bottle.x = (rect.width - bottle.width) / 2;
+          bottle.targetX = bottle.x;
+        }
+      }
+      window.addEventListener("resize", resizeCanvas);
+
+      /* ===================================================
+         使用者觸控與滑鼠拖曳監聽 (極速無延遲響應)
+      =================================================== */
+      function setPlayerTargetX(clientX) {
+        if (!isPlaying) return;
+        const rect = canvas.getBoundingClientRect();
+        const touchX = clientX - rect.left;
+        bottle.targetX = Math.max(0, Math.min(rect.width - bottle.width, touchX - bottle.width / 2));
+      }
+
+      window.addEventListener("touchmove", (e) => {
+        if (e.touches.length > 0) {
+          setPlayerTargetX(e.touches[0].clientX);
+        }
+      }, { passive: false });
+
+      window.addEventListener("mousemove", (e) => {
+        if (isPlaying && (e.buttons === 1 || e.buttons === 0)) {
+          setPlayerTargetX(e.clientX);
+        }
+      });
+
+      /* ===================================================
+         掉落物生成邏輯
+      =================================================== */
+      function spawnEntity() {
+        const rect = canvas.getBoundingClientRect();
+        // 75% 正面木香滴，25% 負面壓力雜質
+        const isBad = Math.random() < 0.25;
+        const radius = isBad ? 16 : 14;
+        const x = Math.random() * (rect.width - radius * 2) + radius;
+
+        if (isBad) {
+          // 生成尖銳暗黑雜訊塊
+          drops.push({
+            isBad: true,
+            x: x,
+            y: -radius * 2,
+            radius: radius,
+            speed: Math.random() * 1.5 + 3.0,
+            scoreDelta: -5,
+            icon: Math.random() < 0.5 ? "⚡" : "✖",
+            // 隨機生成尖銳多角形頂點偏移量
+            points: [
+              { angle: 0, dist: radius * (0.8 + Math.random() * 0.4) },
+              { angle: Math.PI * 0.28, dist: radius * (1.1 + Math.random() * 0.3) },
+              { angle: Math.PI * 0.6, dist: radius * (0.7 + Math.random() * 0.3) },
+              { angle: Math.PI * 0.95, dist: radius * (1.2 + Math.random() * 0.4) },
+              { angle: Math.PI * 1.35, dist: radius * (0.75 + Math.random() * 0.3) },
+              { angle: Math.PI * 1.7, dist: radius * (1.15 + Math.random() * 0.4) }
+            ],
+            jitterOffset: 0
+          });
+        } else {
+          // 生成溫暖發光木香滴
+          const aroma = GOOD_DROPS[Math.floor(Math.random() * GOOD_DROPS.length)];
+          drops.push({
+            isBad: false,
+            x: x,
+            y: -radius * 2,
+            radius: radius,
+            speed: Math.random() * 1.6 + 3.2,
+            scoreDelta: 10,
+            glowColor: aroma.glowColor,
+            fillBase: aroma.fillBase,
+            icon: aroma.icon
+          });
+        }
+      }
+
+      function addFloatingText(text, x, y, color) {
+        floatingTexts.push({
+          text: text,
+          x: x,
+          y: y,
+          opacity: 1,
+          color: color
+        });
+      }
+
+      /* ===================================================
+         專屬圖形渲染引擎 (圓潤香滴 vs 尖銳雜訊)
+      =================================================== */
+
+      // 1. 繪製底部圓柱木質香氛瓶
+      function renderBottle(x, y, w, h) {
+        ctx.save();
+        // 瓶身漸層
+        const grad = ctx.createLinearGradient(x, y, x + w, y);
+        grad.addColorStop(0, "#5C3D2E");
+        grad.addColorStop(0.25, "#8D5B4C");
+        grad.addColorStop(0.7, "#A06B59");
+        grad.addColorStop(1, "#4A3026");
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(x, y + 10, w, h - 10, [6, 6, 14, 14]);
+        ctx.fill();
+
+        // 瓶口金屬頸圈 (科技柔和粉)
+        const neckW = w * 0.48;
+        const neckX = x + (w - neckW) / 2;
+        ctx.fillStyle = "#E8A598";
+        ctx.beginPath();
+        ctx.roundRect(neckX, y + 3, neckW, 8, [3, 3, 0, 0]);
+        ctx.fill();
+
+        // 出霧氣孔
+        ctx.fillStyle = "#2D1D16";
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + 3, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 瓶身簡約標籤
+        ctx.fillStyle = "rgba(253, 249, 243, 0.9)";
+        ctx.fillRect(x + 10, y + 20, w - 20, 16);
+        ctx.fillStyle = "#4A3026";
+        ctx.font = "bold 9px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("AROMA", x + w / 2, y + 28);
+
+        ctx.restore();
+      }
+
+      // 2. 繪製正向木香滴 (水滴形 + 柔光 + 晶亮高光)
+      function renderGoodDrop(d) {
+        ctx.save();
+        ctx.translate(d.x, d.y);
+
+        // 外層外發光暈 (Glow Effect)
+        ctx.shadowColor = d.glowColor;
+        ctx.shadowBlur = 14;
+
+        // 水滴路徑
+        ctx.beginPath();
+        ctx.moveTo(0, -d.radius * 1.35);
+        ctx.bezierCurveTo(d.radius * 1.25, 0, d.radius, d.radius * 1.2, 0, d.radius * 1.2);
+        ctx.bezierCurveTo(-d.radius, d.radius * 1.2, -d.radius * 1.25, 0, 0, -d.radius * 1.35);
+        ctx.closePath();
+
+        // 溫潤色彩填充
+        const dropGrad = ctx.createRadialGradient(-d.radius * 0.2, -d.radius * 0.2, 2, 0, 0, d.radius * 1.2);
+        dropGrad.addColorStop(0, "#FFFFFF");
+        dropGrad.addColorStop(0.3, d.fillBase);
+        dropGrad.addColorStop(1, d.fillBase);
+        ctx.fillStyle = dropGrad;
+        ctx.fill();
+
+        // 關閉陰影繪製細節高光
+        ctx.shadowBlur = 0;
+
+        // 左上方月牙白色高光
+        ctx.beginPath();
+        ctx.arc(-d.radius * 0.35, -d.radius * 0.25, d.radius * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+        ctx.fill();
+
+        // 水滴中心天然標誌
+        ctx.font = "11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillText(d.icon, 0, d.radius * 0.15);
+
+        ctx.restore();
+      }
+
+      // 3. 繪製負向壓力雜訊 (尖銳多邊形 + 抖動 + 警示暗黑)
+      function renderBadDrop(d) {
+        ctx.save();
+        // 邊緣輕微震動 (Jitter) 特效
+        const jitterX = (Math.random() - 0.5) * 2;
+        const jitterY = (Math.random() - 0.5) * 2;
+        ctx.translate(d.x + jitterX, d.y + jitterY);
+
+        // 尖銳暗紅警示光暈
+        ctx.shadowColor = "rgba(139, 0, 0, 0.85)";
+        ctx.shadowBlur = 10;
+
+        // 繪製尖銳不規則碎石多角形
+        ctx.beginPath();
+        d.points.forEach((pt, index) => {
+          const px = Math.cos(pt.angle) * pt.dist;
+          const py = Math.sin(pt.angle) * pt.dist;
+          if (index === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+
+        // 充填暗紫黑警告色
+        ctx.fillStyle = "#2A2438";
+        ctx.fill();
+
+        // 尖銳碎裂紅邊框
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = "#FF3B30";
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+
+        // 中央警告符號 (⚡ / ✖)
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillStyle = "#FF5252";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(d.icon, 0, 0);
+
+        ctx.restore();
+      }
+
+      /* ===================================================
+         遊戲主循環 (Tick & Render)
+      =================================================== */
+      function loop(timestamp) {
+        if (!isPlaying) return;
+
+        const rect = canvas.getBoundingClientRect();
+
+        // 瓶身平滑跟隨 (LERP 插值運算)
+        bottle.x += (bottle.targetX - bottle.x) * 0.28;
+
+        // 生成掉落物 (約每 520ms 一顆)
+        if (timestamp - lastSpawnTime > 520) {
+          spawnEntity();
+          lastSpawnTime = timestamp;
+        }
+
+        ctx.clearRect(0, 0, rect.width, rect.height);
+
+        // 更新與繪製掉落物
+        for (let i = drops.length - 1; i >= 0; i--) {
+          const d = drops[i];
+          d.y += d.speed;
+
+          // 根據類型選擇渲染樣式
+          if (d.isBad) {
+            renderBadDrop(d);
+          } else {
+            renderGoodDrop(d);
+          }
+
+          // 碰撞判定 (香氛瓶頂部開口接球區)
+          const hitX = d.x >= bottle.x - 6 && d.x <= bottle.x + bottle.width + 6;
+          const hitY = d.y + d.radius >= bottle.y + 4 && d.y - d.radius <= bottle.y + bottle.height * 0.55;
+
+          if (hitX && hitY) {
+            score = Math.max(0, score + d.scoreDelta);
+            
+            // 浮動文字反饋
+            const sign = d.scoreDelta > 0 ? `+${d.scoreDelta}` : `${d.scoreDelta}`;
+            const textColor = d.scoreDelta > 0 ? "#8D5B4C" : "#FF3B30";
+            addFloatingText(sign, d.x, bottle.y - 12, textColor);
+
+            // 更新 UI 面板
+            uiScore.textContent = score;
+            const progress = Math.min(100, score);
+            uiProgress.style.width = `${progress}%`;
+
+            drops.splice(i, 1);
+            continue;
+          }
+
+          // 掉出畫面底部移除
+          if (d.y - d.radius > rect.height) {
+            drops.splice(i, 1);
+          }
+        }
+
+        // 繪製香氛瓶
+        renderBottle(bottle.x, bottle.y, bottle.width, bottle.height);
+
+        // 更新與繪製浮動飄字
+        for (let j = floatingTexts.length - 1; j >= 0; j--) {
+          const ft = floatingTexts[j];
+          ft.y -= 1.3;
+          ft.opacity -= 0.035;
+
+          if (ft.opacity <= 0) {
+            floatingTexts.splice(j, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, ft.opacity);
+          ctx.fillStyle = ft.color;
+          ctx.font = "bold 15px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+
+        animationId = requestAnimationFrame(loop);
+      }
+
+      /* ===================================================
+         遊戲進程與結算控制
+      =================================================== */
+      function startGame() {
+        score = 0;
+        timeLeft = 30;
+        drops = [];
+        floatingTexts = [];
+        isPlaying = true;
+
+        // UI 重置
+        uiScore.textContent = score;
+        uiTimer.textContent = timeLeft;
+        uiProgress.style.width = "0%";
+        startModal.classList.add("hidden");
+        resultModal.classList.add("hidden");
+
+        resizeCanvas();
+
+        // 倒數計時器
+        clearInterval(timerTimer);
+        timerTimer = setInterval(() => {
+          timeLeft--;
+          uiTimer.textContent = timeLeft;
+          if (timeLeft <= 0) {
+            endGame();
+          }
+        }, 1000);
+
+        lastSpawnTime = performance.now();
+        cancelAnimationFrame(animationId);
+        animationId = requestAnimationFrame(loop);
+      }
+
+      function endGame() {
+        isPlaying = false;
+        clearInterval(timerTimer);
+        cancelAnimationFrame(animationId);
+
+        // 結算依得分判定
+        if (score >= 100) {
+          resTitle.textContent = "充電成功！";
+          resScore.textContent = "元氣滿格 100%";
+          resScore.style.color = "var(--wood-primary)";
+          resDesc.textContent = RELAX_QUOTES[Math.floor(Math.random() * RELAX_QUOTES.length)];
+        } else {
+          resTitle.textContent = "微電量待充";
+          resScore.textContent = `電量剩餘 ${score}%`;
+          resScore.style.color = "var(--wood-light)";
+          resDesc.textContent = "精神在忙碌中悄悄消耗了。閉上雙眼深呼吸一口木香，整理心緒，隨時都能重新充電。";
+        }
+
+        // 彈出結算視窗
+        resultModal.classList.remove("hidden");
+      }
+
+      // 按鈕綁定
+      btnStart.addEventListener("click", startGame);
+      btnRestart.addEventListener("click", startGame);
+
+      // 初次啟動配置
+      resizeCanvas();
+    })();
+  </script>
+</body>
+</html>
